@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+data/*.db
+.vscode/
+.idea/
+.DS_Store
+node_modules/
+dist/
+build/
+*.log
+*.egg-info/
+
+# DeployX backend (local secrets + dev database)
+backend/.env
+backend/data/
+.pytest_cache/
+
+# Offline demo rehearsal helper (not part of the product)
+_demo_dryrun.py

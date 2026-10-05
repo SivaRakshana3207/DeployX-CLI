@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Deployment — DeployX</title>
+</head>
+
+<body class="min-h-screen bg-slate-950 text-white">
+    <nav class="border-b border-slate-800">
+        <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+            <a href="/" class="text-2xl font-black"><span class="text-cyan-400">Deploy</span>X</a>
+            <a href="/deployments" class="text-sm text-slate-300 hover:text-white">History</a>
+        </div>
+    </nav>
+
+    <main class="mx-auto max-w-4xl px-6 py-12">
+        <p class="text-sm font-bold text-cyan-400">DEP-{{ "%05d"|format(deployment.id) }}</p>
+        <h1 class="mt-2 text-4xl font-black">{{ deployment.project_name }}</h1>
+
+        <div class="mt-10 grid gap-5 md:grid-cols-2">
+            {% for label, value in [
+                ("Framework", deployment.framework),
+                ("Build command", deployment.build_command),
+                ("Output directory", deployment.output_directory),
+                ("Status", deployment.status),
+                ("Created", deployment.created_at)
+            ] %}
+            <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+                <p class="text-sm text-slate-500">{{ label }}</p>
+                <p class="mt-2 break-all text-lg font-bold">{{ value or "—" }}</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="mt-8 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-6">
+            <h2 class="font-bold text-cyan-300">Phase 2</h2>
+            <p class="mt-2 leading-7 text-slate-400">
+                GitHub repository creation, Vercel deployment, monitoring,
+                n8n orchestration and controlled Groq error handling will be connected here.
+            </p>
+        </div>
+    </main>
+</body>
+</html>

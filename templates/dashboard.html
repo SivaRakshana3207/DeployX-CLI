@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>DeployX Dashboard</title>
+</head>
+
+<body class="min-h-screen bg-slate-950 text-white">
+    <nav class="border-b border-slate-800">
+        <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+            <a href="/" class="text-2xl font-black"><span class="text-cyan-400">Deploy</span>X</a>
+            <div class="flex gap-5 text-sm text-slate-300">
+                <a href="/" class="hover:text-white">Home</a>
+                <a href="/deployments" class="hover:text-white">History</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="mx-auto max-w-7xl px-6 py-10">
+        <div>
+            <p class="text-sm font-semibold uppercase tracking-widest text-cyan-400">DeployX</p>
+            <h1 class="mt-2 text-4xl font-black">Dashboard</h1>
+            <p class="mt-3 text-slate-400">Phase 1 deployment records.</p>
+        </div>
+
+        <div class="mt-10 grid gap-5 md:grid-cols-3">
+            <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+                <p class="text-sm text-slate-500">Total deployments</p>
+                <p class="mt-2 text-4xl font-black">{{ deployments|length }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+                <p class="text-sm text-slate-500">Automation</p>
+                <p class="mt-2 text-xl font-bold text-amber-300">Phase 2</p>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+                <p class="text-sm text-slate-500">Database</p>
+                <p class="mt-2 text-xl font-bold text-emerald-300">SQLite ✓</p>
+            </div>
+        </div>
+
+        <div class="mt-10 overflow-hidden rounded-2xl border border-slate-800">
+            <table class="w-full text-left">
+                <thead class="bg-slate-900 text-sm text-slate-400">
+                    <tr>
+                        <th class="px-5 py-4">Deployment</th>
+                        <th class="px-5 py-4">Project</th>
+                        <th class="px-5 py-4">Framework</th>
+                        <th class="px-5 py-4">Build</th>
+                        <th class="px-5 py-4">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for d in deployments %}
+                    <tr class="border-t border-slate-800">
+                        <td class="px-5 py-4">
+                            <a href="/deployment/{{ d.id }}" class="font-bold text-cyan-400">
+                                DEP-{{ "%05d"|format(d.id) }}
+                            </a>
+                        </td>
+                        <td class="px-5 py-4">{{ d.project_name }}</td>
+                        <td class="px-5 py-4 text-slate-400">{{ d.framework }}</td>
+                        <td class="px-5 py-4 text-sm text-slate-400">{{ d.build_command }}</td>
+                        <td class="px-5 py-4">
+                            <span class="rounded-full bg-amber-400/10 px-3 py-1 text-xs font-bold text-amber-300">
+                                {{ d.status }}
+                            </span>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="px-5 py-12 text-center text-slate-500">
+                            No deployment records yet.
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+</body>
+</html>

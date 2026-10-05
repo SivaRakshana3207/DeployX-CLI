@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deployx"
+version = "0.2.0"
+description = "DeployX — one-command deployment platform (scan, build, GitHub push, n8n, Vercel)"
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["deployx", "deployment", "cli", "github", "vercel", "n8n"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+    "Environment :: Console",
+]
+dependencies = [
+    "Flask>=3.1,<4",
+    "python-dotenv>=1.1,<2",
+    "requests>=2.32,<3",
+    "SQLAlchemy>=2.0,<3",
+    "cryptography>=42",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+# Running `deployx <command>` from any project folder treats the
+# current working directory as the project (see cli/deployx.py).
+deployx = "cli.deployx:main"
+
+[tool.setuptools]
+# Explicit packages/modules so setuptools never scans the in-repo .venv.
+packages = ["cli", "utils", "services", "database", "backend", "backend.routes"]
+py-modules = ["app", "config"]
+include-package-data = true

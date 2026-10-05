@@ -1,0 +1,1327 @@
+{
+  "name": "DeployX-02-MultiUser",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "deployx-mu",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "818cd138-2e5c-44dc-a29d-ffaa534e8e85",
+      "name": "DeployX Repo Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "c5b4efdf-0de4-47a6-977e-ceeeb462fafa",
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Load Repo Config",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-base-1",
+              "name": "backend_base_url",
+              "value": "={{ $vars.backend_base_url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "38d7dea1-1faf-4b6a-90df-7f7e31df36eb",
+      "name": "Load Repo Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        272,
+        352
+      ],
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Resolve Repo User",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Load Repo Config').first().json.backend_base_url }}/v1/n8n/deployment-context",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpTemplatedCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  ticket: $('DeployX Repo Request').first().json.body.deployment_ticket ?? null,\n  deployment_id: $('DeployX Repo Request').first().json.body.deployment_id ?? null\n}) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "c1848673-ae3f-4c8b-9440-3356e5e0e442",
+      "name": "Resolve Repo User",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        496,
+        352
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpTemplatedCustomAuth": {
+          "id": "DEPLOYX_BACKEND_SERVICE_KEY_PLACEHOLDER",
+          "name": "DeployX Backend Service Key"
+        }
+      },
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Create User Repository",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Respond Repo Auth Required",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ (() => {\n  const raw = String(($json['error'] && ($json['error'].message || $json['error'].description)) || 'DeployX session could not be resolved.');\n  const safe = raw.replace(/(gh[pousr]_[A-Za-z0-9]{10,}|github_pat_[A-Za-z0-9_]{10,})/g, '[redacted]').replace(/Bearer +[^ \"']+/gi, 'Bearer [redacted]').slice(0, 500);\n  return JSON.stringify({\n    success: false,\n    deployment_id: $('DeployX Repo Request').first().json.body.deployment_id ?? null,\n    failure_stage: 'authorization',\n    auth_required: true,\n    error: 'GitHub authorization is missing, expired, or revoked for this DeployX user. Re-run deployx deploy to re-authorize. Details: ' + safe\n  });\n})() }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "b06e9451-224c-4cf2-a3e1-987a826e52dc",
+      "name": "Respond Repo Auth Required",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        720,
+        448
+      ],
+      "connections": {}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Load Repo Config').first().json.backend_base_url }}/v1/n8n/github/repos/create",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpTemplatedCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  ticket: $('DeployX Repo Request').first().json.body.deployment_ticket ?? null,\n  name: $('DeployX Repo Request').first().json.body.project_name ?? null,\n  description: 'Deployed by DeployX',\n  private: false\n}) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "9e211aaa-9b4c-45e2-b906-138a0897d93b",
+      "name": "Create User Repository",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        256
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpTemplatedCustomAuth": {
+          "id": "DEPLOYX_BACKEND_SERVICE_KEY_PLACEHOLDER",
+          "name": "DeployX Backend Service Key"
+        }
+      },
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Get Existing User Repository",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Respond Repo Auth Required",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Load Repo Config').first().json.backend_base_url }}/v1/n8n/github/repos/get",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpTemplatedCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  ticket: $('DeployX Repo Request').first().json.body.deployment_ticket ?? null,\n  repository: (String((($('Resolve Repo User').first().json || {}).context || {}).github_username || '' ) + '/' + String($('DeployX Repo Request').first().json.body.project_name || '')).replace(/^\\//, '')\n}) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "84b4225a-592e-4da0-a7db-dfadea0bdba3",
+      "name": "Get Existing User Repository",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        944,
+        352
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpTemplatedCustomAuth": {
+          "id": "DEPLOYX_BACKEND_SERVICE_KEY_PLACEHOLDER",
+          "name": "DeployX Backend Service Key"
+        }
+      },
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Repo Owned by User?",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Respond Repository Failure",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "owner-match",
+              "leftValue": "={{ (() => {\n  const user = String((($('Resolve Repo User').first().json || {}).context || {}).github_username || '').toLowerCase();\n  const repo = $json.repository || $json || {};\n  const rawOwner = repo.owner;\n  const owner = String((typeof rawOwner === 'string' ? rawOwner : (rawOwner && rawOwner.login))\n    || String(repo.full_name || '').split('/')[0] || '').toLowerCase();\n  return user !== '' && owner === user;\n})() }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "11877afe-4a3e-435c-a1f4-25c79a580d19",
+      "name": "Repo Owned by User?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1168,
+        176
+      ],
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Respond Repository Ready",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Respond Repository Failure",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ (() => {\n  const mismatch = $prevNode.name === 'Repo Owned by User?';\n  const raw = String(($json['error'] && ($json['error'].message || $json['error'].description)) || '');\n  const safe = raw.replace(/(gh[pousr]_[A-Za-z0-9]{10,}|github_pat_[A-Za-z0-9_]{10,})/g, '[redacted]').replace(/Bearer +[^ \"']+/gi, 'Bearer [redacted]').slice(0, 500);\n  return JSON.stringify({\n    success: false,\n    deployment_id: $('DeployX Repo Request').first().json.body.deployment_id ?? null,\n    failure_stage: mismatch ? 'identity_mismatch' : 'github_repository',\n    error: mismatch\n      ? 'The repository returned does not belong to the authenticated DeployX user. Deployment stopped.'\n      : 'Could not create or fetch the repository in your GitHub account. ' + safe\n  });\n})() }}",
+        "options": {
+          "responseCode": 502
+        }
+      },
+      "id": "7351cec4-658e-44de-88e4-4dec549a7fb8",
+      "name": "Respond Repository Failure",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1392,
+        352
+      ],
+      "connections": {}
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ (() => {\n  const ctx = (($('Resolve Repo User').first().json || {}).context || {});\n  const r = $json.repository || $json || {};\n  return JSON.stringify({\n    success: true,\n    deployment_id: $('DeployX Repo Request').first().json.body.deployment_id ?? null,\n    project_name: $('DeployX Repo Request').first().json.body.project_name ?? null,\n    framework: $('DeployX Repo Request').first().json.body.framework ?? null,\n    github_username: ctx.github_username ?? null,\n    repository_name: r.name ?? null,\n    repository_full_name: r.full_name ?? null,\n    repository_url: r.html_url ?? null,\n    clone_url: r.clone_url ?? null,\n    default_branch: r.default_branch ?? null\n  });\n})() }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "5441a9f0-4a85-46b1-835a-5594c7d528a5",
+      "name": "Respond Repository Ready",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1392,
+        128
+      ],
+      "connections": {}
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "deployx-mu-vercel",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "afa02830-ded7-4511-91db-2e2e9f88eb1b",
+      "name": "DeployX Deploy Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        720
+      ],
+      "webhookId": "48b308d6-5e9d-4bf4-a1a2-d000a5a121f2",
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Load Deploy Config",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-base-2",
+              "name": "backend_base_url",
+              "value": "={{ $vars.backend_base_url }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-max-checks",
+              "name": "max_status_checks",
+              "value": 36,
+              "type": "number"
+            },
+            {
+              "id": "cfg-interval",
+              "name": "poll_interval_seconds",
+              "value": 10,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "832b3add-6c61-4557-8294-e5cc512da03c",
+      "name": "Load Deploy Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        720
+      ],
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Git Push Confirmed?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "push-confirmed",
+              "leftValue": "={{ (() => {\n  const b = $('DeployX Deploy Request').first().json.body || {};\n  const v = b.git_push_confirmed !== undefined ? b.git_push_confirmed : b.push_confirmed;\n  return v === true || v === 'true' || v === 1;\n})() }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "project-name",
+              "leftValue": "={{ $('DeployX Deploy Request').first().json.body.project_name }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "6c7daa84-ff2e-4a66-929b-c6ed0ea15c17",
+      "name": "Git Push Confirmed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        720
+      ],
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Resolve Deploy User",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Summarize Failure",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Load Deploy Config').first().json.backend_base_url }}/v1/n8n/deployment-context",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpTemplatedCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  ticket: $('DeployX Deploy Request').first().json.body.deployment_ticket ?? null,\n  deployment_id: $('DeployX Deploy Request').first().json.body.deployment_id ?? null\n}) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "d2df91f6-407d-4c0b-b854-bb02bc48a0d7",
+      "name": "Resolve Deploy User",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        672,
+        640
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpTemplatedCustomAuth": {
+          "id": "DEPLOYX_BACKEND_SERVICE_KEY_PLACEHOLDER",
+          "name": "DeployX Backend Service Key"
+        }
+      },
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Repository Belongs to User?",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Summarize Failure",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "repo-owner",
+              "leftValue": "={{ (() => {\n  const user = String((($('Resolve Deploy User').first().json || {}).context || {}).github_username || '').toLowerCase();\n  const requested = String($('DeployX Deploy Request').first().json.body.github_repository || '');\n  if (!user) return false;\n  if (!requested.includes('/')) return true;\n  return requested.split('/')[0].toLowerCase() === user;\n})() }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "eab9da0c-199d-44d9-ae26-76222ef7a293",
+      "name": "Repository Belongs to User?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        576
+      ],
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Create Vercel Deployment",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Summarize Failure",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Load Deploy Config').first().json.backend_base_url }}/v1/n8n/vercel/deployments/create",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpTemplatedCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => {\n  const b = $('DeployX Deploy Request').first().json.body || {};\n  const ctx = (($('Resolve Deploy User').first().json || {}).context || {});\n  const requested = String(b.github_repository || '');\n  const repo = requested.includes('/')\n    ? requested.split('/')[1]\n    : (requested || b.project_name);\n  return JSON.stringify({\n    ticket: b.deployment_ticket ?? null,\n    name: String(b.project_name || 'deployx-project')\n      .toLowerCase().replace(/[^a-z0-9._-]/g, '-').slice(0, 100),\n    target: 'production',\n    git_source: {\n      type: 'github',\n      org: ctx.github_username ?? null,\n      repo: repo,\n      ref: b.branch || 'main'\n    }\n  });\n})() }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "45bc24ed-5d44-4e87-9f67-02b18d6a2e9c",
+      "name": "Create Vercel Deployment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1120,
+        496
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpTemplatedCustomAuth": {
+          "id": "DEPLOYX_BACKEND_SERVICE_KEY_PLACEHOLDER",
+          "name": "DeployX Backend Service Key"
+        }
+      },
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Get Vercel Env Var Names",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Summarize Failure",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "amount": "={{ Number($('Load Deploy Config').first().json.poll_interval_seconds) || 10 }}"
+      },
+      "id": "32057bd4-6e3f-49e5-b161-7ff5315132f2",
+      "name": "Wait for Vercel Build",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        432
+      ],
+      "webhookId": "30d39b56-5277-4ae9-bedc-2ea5e5d905be",
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Get Vercel Deployment Status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Load Deploy Config').first().json.backend_base_url }}/v1/n8n/vercel/deployments/status",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpTemplatedCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  ticket: $('DeployX Deploy Request').first().json.body.deployment_ticket ?? null,\n  deployment_id: (($('Create Vercel Deployment').first().json || {}).deployment || {}).id ?? null\n}) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "6a681bf0-ea4e-4ec0-9ab4-8223bfff6af6",
+      "name": "Get Vercel Deployment Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1568,
+        352
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpTemplatedCustomAuth": {
+          "id": "DEPLOYX_BACKEND_SERVICE_KEY_PLACEHOLDER",
+          "name": "DeployX Backend Service Key"
+        }
+      },
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Count Status Checks",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Summarize Failure",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.ready_state }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "READY"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ready"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ (['ERROR', 'CANCELED', 'BLOCKED'].includes(String($json.ready_state))) || (Number($json.status_checks || 0) >= (Number($('Load Deploy Config').first().json.max_status_checks) || 36)) }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    },
+                    "rightValue": true
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "failed_or_timeout"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "still_building"
+        }
+      },
+      "id": "afbadd7c-952b-48a5-a3bc-2cbc3bb670a1",
+      "name": "Route by Build State",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1792,
+        256
+      ],
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Respond Deployment Success",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Summarize Failure",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Wait for Vercel Build",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Load Deploy Config').first().json.backend_base_url }}/v1/n8n/vercel/env-names",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpTemplatedCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  ticket: $('DeployX Deploy Request').first().json.body.deployment_ticket ?? null,\n  project_id: (($('Create Vercel Deployment').first().json || {}).deployment || {}).project_id ?? null\n}) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "dfa17e36-4393-40cc-b93d-72b26c083793",
+      "name": "Get Vercel Env Var Names",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2016,
+        224
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpTemplatedCustomAuth": {
+          "id": "DEPLOYX_BACKEND_SERVICE_KEY_PLACEHOLDER",
+          "name": "DeployX Backend Service Key"
+        }
+      },
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Wait for Vercel Build",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Summarize Failure",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ (() => {\n  const b = $('DeployX Deploy Request').first().json.body;\n  const ctx = ($('Resolve Deploy User').first().json || {}).context || {};\n  const rawStatus = $('Get Vercel Deployment Status').last().json || {};\n  const d = rawStatus.deployment || rawStatus;\n  const requested = String(b.github_repository || '');\n  const repo = requested.includes('/') ? requested.split('/')[1] : (requested || b.project_name);\n  const fullName = ctx.github_username + '/' + repo;\n  const host = (d.alias && d.alias.length) ? d.alias[0] : d.url;\n  const required = Array.isArray(b.env_var_names) ? b.env_var_names.map(String).filter(k => k) : [];\n  let envSrc = {};\n  try { envSrc = ($('Get Vercel Env Var Names').first() || {}).json || {}; } catch (e) { envSrc = {}; }\n  const envNames = Array.isArray(envSrc.env_var_names) ? envSrc.env_var_names.map(String) : null;\n  const warnings = [];\n  let env_check;\n  let missing = [];\n  if (required.length === 0) {\n    env_check = 'not_requested';\n  } else if (!envNames) {\n    env_check = 'check_failed';\n    warnings.push('Could not read environment variable names from your Vercel project, so required variables were not checked.');\n  } else {\n    const inProd = new Set(envNames);\n    missing = required.filter(k => !inProd.has(k));\n    env_check = missing.length ? 'missing' : 'ok';\n    if (missing.length) {\n      warnings.push('Missing on Vercel: ' + missing.join(', ') + '. Add them in Vercel > Project > Settings > Environment Variables, then redeploy.');\n    }\n  }\n  return JSON.stringify({\n    success: true,\n    deployment_id: b.deployment_id ?? null,\n    project_name: b.project_name,\n    framework: b.framework ?? null,\n    github_username: ctx.github_username,\n    github_repository: fullName,\n    github_url: 'https://github.com/' + fullName,\n    vercel_url: host ? 'https://' + host : null,\n    vercel_deployment_id: d.id,\n    vercel_project_settings_url: null,\n    env_check: env_check,\n    required_env_vars: required,\n    missing_env_vars: missing,\n    warnings: warnings\n  });\n})() }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "9473c9e6-cb0a-45fd-a4b5-6bb136557a4b",
+      "name": "Respond Deployment Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2304,
+        224
+      ],
+      "connections": {}
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ (() => {\n  const b = $('DeployX Deploy Request').first().json.body || {};\n  let ctx = {};\n  if ($('Resolve Deploy User').isExecuted) {\n    try { ctx = (($('Resolve Deploy User').first(0, 0) || {}).json || {}).context || {}; } catch (e) { ctx = {}; }\n  }\n  const redact = s => String(s || '').replace(/(gh[pousr]_[A-Za-z0-9]{10,}|github_pat_[A-Za-z0-9_]{10,})/g, '[redacted]').replace(/Bearer +[^ \"']+/gi, 'Bearer [redacted]').replace(/[A-Za-z0-9_-]{40,}/g, '[redacted]').slice(0, 1500);\n  const src = $prevNode.name;\n  const apiErr = $json['error'];\n  const apiMsg = apiErr ? redact(apiErr.description || apiErr.message || JSON.stringify(apiErr)) : '';\n  // The backend reports the real reason in an `error` code. Never guess an\n  // authentication problem when the backend said something else.\n  const code = String($json.code || $json.error_code || (typeof $json.error === 'string' ? $json.error : '') || '').trim();\n  const authCodes = ['invalid_ticket', 'ticket_expired', 'ticket_used', 'unauthorized', 'provider_not_connected'];\n  const isAuth = authCodes.indexOf(code) !== -1;\n  let failure_stage, error;\n  let auth_required = false;\n  if (src === 'Git Push Confirmed?') {\n    failure_stage = 'push_not_confirmed';\n    error = 'Git push was not confirmed by DeployX CLI (git_push_confirmed must be true and project_name is required). Vercel deployment was not started.';\n  } else if (src === 'Resolve Deploy User') {\n    if (isAuth) {\n      failure_stage = 'authorization';\n      auth_required = true;\n      error = 'DeployX backend rejected the deployment ticket or provider connection (' + code + '). ' + apiMsg;\n    } else {\n      failure_stage = code ? 'backend_error' : 'backend_unreachable';\n      error = 'DeployX backend call failed' + (code ? ' (' + code + ')' : '') + ': ' + (apiMsg || 'no response from the backend. Check that it is running and reachable from n8n.');\n    }\n  } else if (src === 'Repository Belongs to User?') {\n    failure_stage = 'identity_mismatch';\n    error = 'The requested repository does not belong to the authenticated DeployX user. Deployment stopped.';\n  } else if (apiErr) {\n    failure_stage = 'vercel_api';\n    error = 'Vercel API error: ' + apiMsg;\n  } else if (['ERROR', 'CANCELED', 'BLOCKED'].includes($json['ready_state'])) {\n    failure_stage = 'vercel_build';\n    error = 'Vercel build ended with state ' + $json['ready_state'] + ($json['error_message'] ? ': ' + redact($json['error_message']) : '');\n  } else {\n    failure_stage = 'vercel_timeout';\n    error = 'Timed out waiting for Vercel build (last state: ' + ($json['ready_state'] || 'unknown') + '). Deployment ID: ' + (($json['deployment'] || {}).id || 'unknown');\n  }\n  const requested = String(b.github_repository || '');\n  const repo = requested.includes('/') ? requested.split('/')[1] : (requested || b.project_name || '');\n  const owner = ctx.github_username || null;\n  return JSON.stringify({\n    deployment_id: b.deployment_id ?? null,\n    project_name: b.project_name ?? null,\n    framework: b.framework ?? null,\n    branch: b.branch || 'main',\n    github_username: owner,\n    github_url: (owner && repo) ? 'https://github.com/' + owner + '/' + repo : null,\n    failure_stage: failure_stage,\n    auth_required: auth_required,\n    error: error,\n    vercel_deployment_id: $json['id'] ?? null,\n    vercel_error_code: $json['errorCode'] ?? null\n  });\n})() }}",
+        "options": {}
+      },
+      "id": "bb948155-88c0-49ba-9bdc-ed8d3e7a713e",
+      "name": "Summarize Failure",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2016,
+        768
+      ],
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Generate Fix Guidance",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=A DeployX deployment failed. Details:\n- Project: {{ $json.project_name }}\n- Framework: {{ $json.framework }}\n- Branch: {{ $json.branch }}\n- GitHub repo: {{ $json.github_url }}\n- Failure stage: {{ $json.failure_stage }}\n- Vercel deployment ID: {{ $json.vercel_deployment_id }}\n- Vercel error code: {{ $json.vercel_error_code }}\n- Error: {{ $json.error }}\n\nExplain the most likely cause in one sentence, then give numbered steps to fix it and redeploy.",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are the DeployX deployment assistant. The pipeline is: the DeployX CLI scans the project locally, the user authorizes DeployX with THEIR OWN GitHub and Vercel accounts, DeployX creates a repository in the user's GitHub account and pushes the project, then a Vercel production deployment is created in the user's own Vercel account from that repository. Give short, concrete, plain-text fix steps (max 8 steps, no markdown tables). Cover where relevant: expired or revoked GitHub/Vercel authorization (re-running deployx deploy triggers re-authorization), the Vercel GitHub integration needing access to the repository, git_push_confirmed flag, framework detection, build command/output directory, requirements.txt or package.json, Python/Flask entrypoint (vercel.json, module-level app), and missing environment variables in Vercel Project Settings. Never ask for or print secrets, tokens, or environment variable values. End with the redeploy command: deployx deploy"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "cc83fcb4-e3f8-48c6-9966-aafe848db706",
+      "name": "Generate Fix Guidance",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        2240,
+        768
+      ],
+      "onError": "continueRegularOutput",
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Groq gpt-oss-20b",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {
+          "maxTokensToSample": 1024,
+          "temperature": 0.2
+        }
+      },
+      "id": "382b845e-e0dc-4b19-94d5-a78d529cc20e",
+      "name": "Groq gpt-oss-20b",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        2320,
+        992
+      ],
+      "credentials": {
+        "groqApi": {
+          "id": "4K1qcUIFf5bMG2Jg",
+          "name": "Groq account"
+        }
+      },
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Respond Deployment Failure",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ (() => {\n  const f = $('Summarize Failure').first().json;\n  const g = ($json.text && String($json.text).trim()) ? String($json.text).trim() : 'AI guidance unavailable. Check the error above and the Vercel deployment logs.';\n  return JSON.stringify({\n    success: false,\n    deployment_id: f.deployment_id,\n    project_name: f.project_name,\n    github_username: f.github_username,\n    github_url: f.github_url,\n    failure_stage: f.failure_stage,\n    auth_required: f.auth_required,\n    error: f.error,\n    vercel_deployment_id: f.vercel_deployment_id,\n    ai_fix_guidance: g\n  });\n})() }}",
+        "options": {
+          "responseCode": "={{ $('Summarize Failure').first().json.failure_stage === 'authorization' ? 401 : 200 }}"
+        }
+      },
+      "id": "dbd5716c-0711-4700-977b-4f8ebe58c2e8",
+      "name": "Respond Deployment Failure",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2592,
+        768
+      ],
+      "connections": {}
+    },
+    {
+      "parameters": {
+        "jsCode": "// Count status polls for this deployment ticket so the Vercel polling\n// window (36 checks x 10s = 6 minutes) can never run indefinitely.\n// The counter is scoped per deployment ticket, so two concurrent\n// deployments never share state.\nconst store = $getWorkflowStaticData('global');\nconst body = $('DeployX Deploy Request').first().json.body || {};\nconst key = String(body.deployment_ticket || body.deployment_id || 'unknown');\nconst max = Number($('Load Deploy Config').first().json.max_status_checks || 36);\n\nstore.deployx_status_checks = store.deployx_status_checks || {};\nconst checks = Number(store.deployx_status_checks[key] || 0) + 1;\nstore.deployx_status_checks[key] = checks;\n\nconst status = $json || {};\nconst deployment = status.deployment || {};\n\nreturn [{\n  json: {\n    ...status,\n    status_checks: checks,\n    max_status_checks: max,\n    ready_state: deployment.ready_state ?? status.ready_state ?? null,\n    ticket_closed: status.ticket_closed ?? false,\n    deployment\n  }\n}];\n"
+      },
+      "id": "count-status-checks",
+      "name": "Count Status Checks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        400
+      ],
+      "notes": "Counts Vercel status polls per deployment ticket so the 6-minute window cannot run forever.",
+      "connections": {
+        "main": [
+          [
+            {
+              "node": "Route by Build State",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "DeployX Repo Request": {
+      "main": [
+        [
+          {
+            "node": "Load Repo Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Repo Config": {
+      "main": [
+        [
+          {
+            "node": "Resolve Repo User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Repo User": {
+      "main": [
+        [
+          {
+            "node": "Create User Repository",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Repo Auth Required",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond Repo Auth Required": {},
+    "Create User Repository": {
+      "main": [
+        [
+          {
+            "node": "Get Existing User Repository",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Repo Auth Required",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Existing User Repository": {
+      "main": [
+        [
+          {
+            "node": "Repo Owned by User?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Repository Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repo Owned by User?": {
+      "main": [
+        [
+          {
+            "node": "Respond Repository Ready",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Repository Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond Repository Failure": {},
+    "Respond Repository Ready": {},
+    "DeployX Deploy Request": {
+      "main": [
+        [
+          {
+            "node": "Load Deploy Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Deploy Config": {
+      "main": [
+        [
+          {
+            "node": "Git Push Confirmed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Git Push Confirmed?": {
+      "main": [
+        [
+          {
+            "node": "Resolve Deploy User",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Summarize Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Deploy User": {
+      "main": [
+        [
+          {
+            "node": "Repository Belongs to User?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Summarize Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repository Belongs to User?": {
+      "main": [
+        [
+          {
+            "node": "Create Vercel Deployment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Summarize Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Vercel Deployment": {
+      "main": [
+        [
+          {
+            "node": "Get Vercel Env Var Names",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Summarize Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Vercel Build": {
+      "main": [
+        [
+          {
+            "node": "Get Vercel Deployment Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Vercel Deployment Status": {
+      "main": [
+        [
+          {
+            "node": "Count Status Checks",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Summarize Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Build State": {
+      "main": [
+        [
+          {
+            "node": "Respond Deployment Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Summarize Failure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait for Vercel Build",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Vercel Env Var Names": {
+      "main": [
+        [
+          {
+            "node": "Wait for Vercel Build",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Summarize Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond Deployment Success": {},
+    "Summarize Failure": {
+      "main": [
+        [
+          {
+            "node": "Generate Fix Guidance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Fix Guidance": {
+      "main": [
+        [
+          {
+            "node": "Groq gpt-oss-20b",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq gpt-oss-20b": {
+      "main": [
+        [
+          {
+            "node": "Respond Deployment Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond Deployment Failure": {},
+    "Count Status Checks": {
+      "main": [
+        [
+          {
+            "node": "Route by Build State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8f05387d-0760-4a96-bad1-b466cacfcada",
+  "meta": {
+    "instanceId": "ee9bd838dd457f8e98b36ba78630e801b53fd306b3fcc6a33b38d711524732bc"
+  },
+  "nodeGroups": [
+    {
+      "id": "5cddb873-a9de-46df-8d5c-af9ccd46eee7",
+      "name": "Provision user repository",
+      "nodeIds": [
+        "38d7dea1-1faf-4b6a-90df-7f7e31df36eb",
+        "c1848673-ae3f-4c8b-9440-3356e5e0e442",
+        "9e211aaa-9b4c-45e2-b906-138a0897d93b",
+        "84b4225a-592e-4da0-a7db-dfadea0bdba3",
+        "11877afe-4a3e-435c-a1f4-25c79a580d19",
+        "5441a9f0-4a85-46b1-835a-5594c7d528a5",
+        "b06e9451-224c-4cf2-a3e1-987a826e52dc",
+        "7351cec4-658e-44de-88e4-4dec549a7fb8"
+      ],
+      "description": "Checks the deployment ticket, then creates or reuses the repo in the caller's own GitHub account and returns its URLs"
+    },
+    {
+      "id": "64c39afd-df67-4f3d-93aa-9e735f374d17",
+      "name": "Deploy to user Vercel",
+      "nodeIds": [
+        "832b3add-6c61-4557-8294-e5cc512da03c",
+        "6c7daa84-ff2e-4a66-929b-c6ed0ea15c17",
+        "d2df91f6-407d-4c0b-b854-bb02bc48a0d7",
+        "eab9da0c-199d-44d9-ae26-76222ef7a293",
+        "45bc24ed-5d44-4e87-9f67-02b18d6a2e9c",
+        "32057bd4-6e3f-49e5-b161-7ff5315132f2",
+        "6a681bf0-ea4e-4ec0-9ab4-8223bfff6af6",
+        "afbadd7c-952b-48a5-a3bc-2cbc3bb670a1",
+        "dfa17e36-4393-40cc-b93d-72b26c083793",
+        "9473c9e6-cb0a-45fd-a4b5-6bb136557a4b",
+        "bb948155-88c0-49ba-9bdc-ed8d3e7a713e",
+        "cc83fcb4-e3f8-48c6-9966-aafe848db706",
+        "382b845e-e0dc-4b19-94d5-a78d529cc20e",
+        "dbd5716c-0711-4700-977b-4f8ebe58c2e8"
+      ],
+      "description": "After a confirmed push, deploys the caller's repo to their own Vercel, waits for the build, returns live URL or AI fix steps"
+    }
+  ],
+  "id": "6E75FsHlpO8pQ59A",
+  "tags": []
+}
